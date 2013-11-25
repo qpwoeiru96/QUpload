@@ -7,11 +7,11 @@ QUpload
 -------------
 
     /**
-     * 注入某个id的元素 点击该id即可选择上传文件
-     * @param String id 
+     * 注入某个元素 点击该元素即可选择上传文件
+     * @param ElementNode elem 
      * @return void
      */
-    QUpload::inject(id:String):void
+    QUpload::inject(elem:ElementNode):void
 
     /**
      * 开始上传文件
@@ -19,6 +19,10 @@ QUpload
      */
     QUpload::upload():void
 
+    /**
+     * 重置上传环境
+     */
+    QUplpad::reset():void
 
     /**
      * 断开文件上传
