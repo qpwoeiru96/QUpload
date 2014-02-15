@@ -1,0 +1,511 @@
+﻿package la.sou
+{
+    import flash.net.*;
+    import flash.events.*;
+    import flash.display.DisplayObject;
+    import flash.external.ExternalInterface;
+    import flash.utils.ByteArray;
+    import la.sou.File;
+    import flash.system.Security;    
+    
+    public class QUpload 
+    {
+        // 文件上传以及分割类
+        private var _file:File;
+        
+        // 根显示对象
+        private var _root:DisplayObject;
+        
+        // 配置信息
+        private var _config:Object;
+        
+        // 文件上传的URLLoader
+        private var _urlLoader:URLLoader;
+        
+        // 文件是否是在上传中
+        private var _onUploading:Boolean = false;
+		
+		// 文件是否是需要加载完成之后立即上传
+		private var _needUpload:Boolean = false;
+        
+        /**
+         * 获取配置
+         *
+         * @return  Object
+         */
+        public function get config():Object
+        {
+            return this._config;
+        }
+       
+        /**
+         * 构造函数
+         * @param root
+         */
+        public function QUpload(root:DisplayObject):void
+        {
+            
+            this._root = root;
+            
+            // 允许上传文件到任意域名
+            Security.allowDomain("*");
+
+            this._file = this._getNewFile();
+            
+            //分析外部的环境配置
+            this._parseConfig();            
+          
+            this._root.stage.addEventListener(MouseEvent.CLICK, this._rootStageClickHandler);
+            
+            //添加外部接口
+            ExternalInterface.addCallback('upload', this.upload);
+            ExternalInterface.addCallback('getFileInfo', this.getFileInfo);
+            ExternalInterface.addCallback('abort', this.abort);
+            ExternalInterface.addCallback('reset', this.reset);
+        }
+        
+        /**
+         * 开始上传文件
+         */
+        public function upload():void
+        {
+            // 如果文件正在上传中 或者加载中而且标志了加载后立即上传 那么无需处理
+            if (this._onUploading || (!this._file.loaded && this._needUpload)) {
+                return;
+                
+            // 如果文件没有进行选择            
+            } else if (!this._file.selected) {
+                this._throwError('', 301);
+                
+            // 如果文件没有加载完成
+            } else if (!this._file.loaded) {
+                
+				//设置标识位为true 代表加载完成之后立即上传
+				this._needUpload = true;
+				//同时抛出一个进度条事件
+				this._emitEvent('progress', [0, this._file.size]);
+                //var percent:Number = this._file.loadedSize / this._file.size * 100;
+                //this._throwError(percent.toFixed(2), 302);
+                
+            } else {
+                this._getToken();
+            }
+        }
+        
+        /**
+         * 重置上传环境
+         */
+        public function reset():void
+        {
+            try {
+                this._file.cancel();
+            } catch (e) { }
+
+            this._file = this._getNewFile();
+
+            this.abort();            
+        }
+        
+        /**
+         * 退出上传
+         */
+        public function abort():void
+        {
+            try {
+                this._urlLoader.close();
+            } catch (e) { }
+            this._needUpload = false;
+            this._onUploading = false;
+        }
+
+        /**
+         * 获取当前上传文件的信息
+         * 
+         * @return Object
+         */
+        public function getFileInfo():Object
+        {
+            if (this._file.selected) {
+                return  {
+                    name: this._file.name,
+                    time: this._file.time,
+                    size: this._file.size
+                }
+            } else {
+                return {};
+            }
+        }
+        
+        /**
+         * 弹出事件到外部空间
+         * 
+         * @param eventName
+         * @param args
+         */
+        private function _emitEvent(eventName:String, args:Array):void
+        {
+            var funcName:String = [
+                'QUpload.FlashProxy',
+                this.config.flashProxyId,
+                'emit'
+            ].join('.');
+            
+            ExternalInterface.call(funcName, eventName, args);
+        }
+              
+        /**
+         * 绑定文件事件
+         * 
+         * @param file
+         */
+        private function _bindFileEvent(file:File):void
+        {
+            file.addEventListener(Event.COMPLETE, this._fileLoadComplete, false, 0, true);
+            file.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
+            file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
+			
+        }
+		
+		/**
+         * 文件加载完成事件
+         * 
+         * @param event
+         */
+		private function _fileLoadComplete(event:Event):void
+		{
+			//判断标志位 再者判断是否是属于当前文件
+			if(this._needUpload && this._file === event.target)
+				this._getToken();
+		}
+        
+        /**
+         * 文件选择完成之后的操作
+         */
+        private function _fileSelectHandler(event:Event):void
+        {
+            var file = event.target,
+                ext:String = file.name.split('.').pop();
+            
+            if (file.size > this.config.maxFileSize) {
+                this._emitEvent('error', [[printByte(this.config.maxFileSize), printByte(file.size)].join('|'), 102]);
+                this.reset();
+            } else if (this.config.allowedExt.indexOf(ext.toLowerCase()) === -1) {
+                this._emitEvent('error', [[this.config.allowedExt.join('/'), ext].join('|'), 101]);
+                this.reset();
+            } else {
+				this._emitEvent('select', [{
+					name: file.name,
+					size: file.size,
+					time: file.time
+				}]);
+                //重置上传环境 因为用户已经选择新的文件
+                this.reset();
+                this._bindFileEvent(file);
+                this._file = file;
+                file.load();
+            }            
+        }
+        
+        private function _getUploadLoader():URLLoader
+        {
+            try {
+                this._urlLoader.close();
+            } catch (e)  {}
+            
+            this._urlLoader = new URLLoader();
+            
+            this._urlLoader.addEventListener(ProgressEvent.PROGRESS, this._progressHandler, false, 0, true); 
+            this._urlLoader.addEventListener(Event.COMPLETE, this._chunkUploadCompelete, false, 0, true);
+            this._urlLoader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
+            this._urlLoader.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
+            return this._urlLoader;
+        }
+        
+        private function _uploadComplete(token:String)
+        {
+            this._emitEvent('progress', [this._file.size, this._file.size]);
+            this._emitEvent('complete', [token]);
+            this.reset();
+        }
+        
+
+        
+        private function _uploadChunk(token:String, start:Number, end:Number)
+        {
+            var bytes:ByteArray,
+                params:String,
+                url:String,
+                urlRequest:URLRequest,
+                urlLoader:URLLoader; 
+            
+            bytes = this._file.slice(start, end);
+            
+            params = [
+                'token=' + token, 
+                'client=flash',
+                'start=' + start,
+                'end=' + end
+            ].join('&');
+                
+            url = this.config.uploadUrl + '?' + params;
+            
+            urlRequest                = new URLRequest(url);
+            urlRequest.method         = URLRequestMethod.POST;
+            urlRequest.data           = bytes;
+            urlRequest.contentType    = "application/octet-stream";
+            
+            urlLoader = this._getUploadLoader();
+            
+            urlLoader.load(urlRequest);
+        }
+        
+        private function _chunkUploadCompelete(event:Event)
+        {
+            var responseText:String,
+                data:Object,
+                status:Number,
+                range:Array,
+                start:Number,
+                end:Number,
+                token:String;
+                
+            try {
+                
+                responseText = event.target.data;
+                data   = JSON.parse(responseText);
+                status = Number(data.status);
+                range  = data.range.split('-');
+                start  = Number(range[0]);
+                end    = Number(range[1]);
+                token  = data.token;
+                
+                if (1 === status || 0 === status) {
+                    this._uploadChunk(token, start, end);
+                } else if (2 === status) {
+                    this._uploadComplete(token);
+                } else {
+                    this.abort();
+                    this._throwError('', 201);
+                }
+                
+            } catch (e) {
+                
+                //throw e;
+                this.abort();
+                this._throwError(e.toString(), 201);
+                
+            } finally {
+                
+            }
+            
+        }
+        
+        /**
+         * 令牌获取完成之后的操作 就是切割并且上传文件啦
+         * 
+         * @param event
+         */
+        private function _tokenCompleteHandler(event:Event):void
+        {
+            
+            var responseText:String,
+                data:Object,
+                status:Number,
+                range:Array,
+                start:Number,
+                end:Number,
+                token:String;
+                
+            try {                
+                
+                responseText = event.target.data;
+                data   = JSON.parse(responseText);
+                status = Number(data.status);
+                range  = data.range.split('-');
+                start  = Number(range[0]);
+                end    = Number(range[1]);
+                token  = data.token;
+                
+                if (1 === status || 0 === status) {
+                    this._uploadChunk(token, start, end);
+                } else if (2 === status) {
+                    this._uploadComplete(token);
+                } else {
+                    this.abort();
+                    this._throwError('', 201);
+                }
+               
+            } catch (e) {
+                
+                //throw e;
+                this.abort();
+                this._throwError(e.toString(), 201);
+                
+            } finally {
+                
+            }
+        }
+        
+        private function _throwError(message:String, code:Number):void
+        {
+            this._emitEvent('error', [message, code]);
+        }
+        
+        private function _getToken():void
+        {
+            var request:URLRequest     = new URLRequest(this.config.tokenUrl);
+            var variables:URLVariables = new URLVariables();
+            var loader:URLLoader       = new URLLoader();
+            
+            variables.name             = this._file.name;
+            variables.size             = this._file.size;
+            variables.time             = this._file.time;
+            variables.antiCache        = (new Date()).getTime();
+            request.method             = URLRequestMethod.GET;
+            request.data               = variables;
+
+            loader.addEventListener(Event.COMPLETE, this._tokenCompleteHandler, false, 0, true);            
+            loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
+            loader.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
+            
+            loader.load(request);
+        }
+        
+        private function _getNewFile():File
+        {
+            var file = new File();
+            file.addEventListener(Event.SELECT, this._fileSelectHandler);
+            return file;
+        }
+        
+        /**
+         * 根元素点击事件处理
+         *
+         * @param event
+         */
+        private function _rootStageClickHandler(event:MouseEvent):void
+        {
+            var file:File;
+            
+            if (this._file.selected) {
+                file = this._getNewFile();
+            } else {
+                file = this._file;
+            }
+            
+            file.browse();
+        }
+        
+        /**
+         * 分析外部给定的配置
+         * 
+         */
+        private function _parseConfig():void
+        {
+            this._config = new Object();
+            
+            var paramObj:Object = this._root.stage.loaderInfo.parameters;
+               
+            this._config['flashProxyId'] = fetchKey(paramObj, 'flashProxyId');
+            this._config['tokenUrl']     = fetchKey(paramObj, 'tokenUrl');                
+            this._config['uploadUrl']    = fetchKey(paramObj, 'uploadUrl');                
+            this._config['maxFileSize']  = Number(fetchKey(paramObj, 'maxFileSize'));                
+            this._config['allowedExt']   = fetchKey(paramObj, 'allowedExt').toLowerCase().split('|');
+            this._config['debug']        = fetchKey(paramObj, 'debug');
+            
+            //info('QUpload.Config.Detail', JSON.stringify(this._config));
+            
+        }
+        
+        private function _IOErrorHandler(event:IOErrorEvent):void
+        {
+            QUpload.error('File.IOError', event.toString());
+            this._emitEvent('error', [event.toString(), 201]);
+        }
+        
+        private function _progressHandler(event:ProgressEvent)
+        {
+            
+            QUpload.info('File.loadProgress', [(this._file.lastSliceStart + event.bytesLoaded) / 1048576, 'MB'].join(''));
+            this._emitEvent('progress', [this._file.lastSliceStart + event.bytesLoaded, this._file.size]);
+        }
+        
+        private function _securityErrorHandler(event:SecurityErrorEvent)
+        {
+            QUpload.error('File.SecurityError', event.toString());
+            this._emitEvent('error', [event.toString(), 201]);
+        }
+        
+        /**
+         * 获取指定的键值
+         * 
+         * @param obj
+         * @param key
+         * @return 如果有返回 指定的值 如果没有返回空字符串
+         */
+        public static function fetchKey(obj:Object, key:String):String
+        {
+            return typeof obj[key] !== "undefined" ? obj[key] : '';
+        }
+		
+		public static function printByte(byte:Number):String
+		{
+			if(byte < 1024) {
+				return byte.toString() + 'B';
+			} else if(byte < 1048576) {
+				return (byte / 1024).toFixed(2).toString() + 'KB';
+			} else if(byte < 1073741824) {
+				return (byte / 1048576).toFixed(2).toString() + 'MB';
+			} else {
+				return (byte / 1073741824).toFixed(2).toString() + 'GB';
+			}
+		}
+        
+        /**
+         * 记录日志信息
+         * 
+         * @param category
+         * @param level
+         * @param message
+         */
+        public static function log(level:Number, category:String, message:String):void
+        {
+            //正常模式中请使用
+            return;
+            
+            var date:Date = new Date();
+            
+            var str:String = [
+                'QUpload Flash ' + ['Info', 'Debug', 'Warning', 'Error'][level],
+                'Time: ' + date.toLocaleString(),
+                'Cateogry: ' + category,
+                'Message: ' + message
+            ].join('\n');
+            
+            trace(str);
+            
+            ExternalInterface.call('console.log', str);
+        }
+        
+        public static function info(category:String, message:String):void
+        {
+            log(0, category, message);
+        }
+        
+        public static function debug(category:String, message:String):void
+        {
+            log(1, category, message);
+        }
+        
+        public static function warn(category:String, message:String):void
+        {
+            log(2, category, message);
+        }
+        
+        public static function error(category:String, message:String):void
+        {
+            log(3, category, message);
+        }
+        
+    }
+}

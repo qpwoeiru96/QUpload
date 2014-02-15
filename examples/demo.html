@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<title>Uploader</title>
+    <script src="http://libs.baidu.com/jquery/1.10.2/jquery.min.js"></script>
+    <script src="http://libs.baidu.com/bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <link href="http://cdn.bootcss.com/twitter-bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://cdn.bootcss.com/twitter-bootstrap/2.3.2/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="./css/page.css" rel="stylesheet">
+    <script type="text/javascript" src="../dist/qupload.js"></script>
+</head>
+<body>
+    <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-inner">
+            <div class="container">
+                <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="brand" href="./index.html">
+                    QUpload
+                </a>
+                <div class="nav-collapse collapse">
+                    <ul class="nav">
+                        <li>
+                            <a href="./index.html">首页</a>
+                        </li>
+                        <li class="">
+                            <a href="./example.html">案例</a>
+                        </li>
+                        <li class="">
+                            <a href="./document.html">文档</a>
+                        </li>
+                        <li class="active">
+                            <a href="./demo.html">DEMO</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+	<div class="container">
+        <div class="row" style="margin-top: 70px;">
+            <div class="span3  bs-docs-sidebar">
+            </div>
+            <div class="span9">
+                <div>
+                    <div id="click" class="btn btn-primary">点击我选择文件夹</div>
+                    <div id="upload" class="btn btn-success">上传</div>
+                    <div id="abort" class="btn btn-warning">停止上传</div>
+                    <div id="reset" class="btn btn-danger">重置</div>
+                </div>
+                
+                <div style="margin: 10px;">
+                    <div class="progress progress-striped active">
+                        <div id="progress" class="bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
+</body>
+<script type="text/javascript">
+$(function() {
+    t = new QUpload({
+        labelName : "Upload",
+        tokenUrl : '/QUpload/examples/token.php',
+        uploadUrl : '/QUpload/examples/upload.php',
+        swfPath: '../dist/qupload.swf'
+    });
+
+    $('#upload').click(function() {
+        t.upload();
+    });
+
+    $('#reset').click(function() {
+        t.reset();
+    });
+
+    $('#abort').click(function() {
+        t.abort();
+    });
+
+    t.inject( document.getElementById('click'));
+
+    t.addEventListener('error', function(message, code) {
+        alert(message);
+    });
+
+    t.addEventListener('select', function(file) {
+        console.log(file);
+    });
+
+    t.addEventListener('progress', function(a, b) {
+
+        var percent = (a / b * 100).toFixed(2) + '%';
+
+        $('#progress').css('width', percent).text(percent);
+    });
+
+    t.addEventListener('complete', function(token) {
+        alert('文件上传成功：' + token);
+    });
+});
+</script>
+</html>
+

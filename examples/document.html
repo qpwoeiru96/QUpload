@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>QUpload - 一个使用PHP + HTML5 + Flash的上传解决方案</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="QUpload - 一个使用PHP + HTML5 + Flash的上传解决方案">
+    <meta name="keywords" content="">
+    <link href="http://cdn.bootcss.com/twitter-bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://cdn.bootcss.com/twitter-bootstrap/2.3.2/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="./css/page.css" rel="stylesheet">
+</head>
+<body data-spy="scroll" data-target=".bs-docs-sidebar">
+    <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-inner">
+            <div class="container">
+                <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="brand" href="./index.html">
+                    QUpload
+                </a>
+                <div class="nav-collapse collapse">
+                    <ul class="nav">
+                        <li class="">
+                            <a href="./index.html">首页</a>
+                        </li>
+                        <li class="">
+                            <a href="./example.html">案例</a>
+                        </li>
+                        <li class="" class="active">
+                            <a href="./document.html">文档</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="span3 bs-docs-sidebar">
+                <ul class="nav nav-list bs-docs-sidenav affix-top">
+                    <li>
+                        <a href="#client-config">
+                            <i class="icon-chevron-right"></i>
+                            客户端配置
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#client-api">
+                            <i class="icon-chevron-right">
+                            </i>
+                            客户端接口
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#client-event">
+                            <i class="icon-chevron-right">
+                            </i>
+                            客户端事件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#client-error">
+                            <i class="icon-chevron-right">
+                            </i>
+                            客户端错误
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#examples">
+                            <i class="icon-chevron-right">
+                            </i>
+                            案例
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#what-next">
+                            <i class="icon-chevron-right">
+                            </i>
+                            下一步？
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="span9">
+                <div id="client-config">
+                    <div class="page-header">
+                        <h1>1. 客户端配置</h1>
+                    </div>
+                    <div>
+                        <pre class="prettyprint lang-javascript linenums:1">
+var config = {
+    /**
+     * 获取令牌的地址
+     * method: GET
+     * params: time name size
+     * dataType: JSON
+     */
+    tokenUrl: 'token.php',
+
+    /**
+     * 上传文件地址
+     * method: POST
+     * params: token start end
+     * dataType: JSON
+     */
+    uploadUrl: 'upload.php',
+
+    /**
+     * Flash文件地址
+     */
+    swfPath: 'qupload.swf',
+
+    /**
+     * 文件上传的最大大小
+     * default: 128MB
+     */
+    maxFileSize: 134217728,
+    
+    /**
+     * 允许上传的文件名称
+     * 以|为间隔
+     */
+    allowedExt: 'gif|jpg|png'
+}
+                        </pre>
+                    </div>
+                </div>
+
+
+
+                <div id="client-api">
+                    <div class="page-header">
+                        <h1>2. 客户端接口</h1>
+                    </div>
+                    <div>
+                        <pre class="prettyprint lang-javascript linenums:1">
+/**
+ * 注入某个元素 点击该元素即可选择上传文件
+ * @param ElementNode elem 
+ * @return void
+ */
+QUpload::inject(elem:ElementNode):void
+
+/**
+ * 开始上传文件
+ * @return void
+ */
+QUpload::upload():void
+
+/**
+ * 重置上传环境
+ */
+QUplpad::reset():void
+
+/**
+ * 断开文件上传
+ * @return void
+ */
+QUpload::abort():void
+
+
+/**
+ * 添加事件监听
+ * @param String eventName
+ * @param Function listener
+ * @return void
+ */
+QUpload::addEventListener(eventName:String, listener:Function):void
+
+/**
+ * 移除事件监听
+ * @param String eventName
+ * @param Function listener
+ * @return void
+ */
+QUpload::removeEventListener(eventName:String, listener:Function):void
+                        </pre>
+                    </div>
+                </div>
+
+
+                <div id="client-event">
+                    <div class="page-header">
+                        <h1>3. 客户端事件</h1>
+                    </div>
+                    <div>
+                        <pre class="prettyprint lang-javascript linenums:1">
+/**
+ * 上传进度事件
+ * @param Number loadedByte 已加载的字节数
+ * @param Number totalByte 剩余未加载的字节数
+ */
+QUpload.PROGRESS
+
+/**
+ * 上传错误事件
+ * @param String message 错误信息
+ * @param Number code 错误代码
+ */
+QUpload.ERROR
+
+/**
+ * 上传完成事件
+ * @param String token 上传文件令牌 根据此令牌可以去服务端获得指定的文件
+ */
+QUpload.COMPLETE
+                        </pre>
+                    </div>
+                </div>
+
+                <div id="client-error">
+                    <div class="page-header">
+                        <h1>4. 客户端错误</h1>
+                    </div>
+                    <div>
+                        <pre class="prettyprint lang-javascript linenums:1">
+CODE: 1001
+MESSAGE: 文件大小超出配置
+
+CODE: 1002
+MESSAGE: 文件类型不符合系统要求
+                        </pre>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+    <script src="http://libs.baidu.com/jquery/1.10.2/jquery.min.js"></script>
+    <script src="http://libs.baidu.com/bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <script src="./google-code-prettify/prettify.js"></script>
+    <script src="./js/application.js"></script>
+</body>
+</html>
