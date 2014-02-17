@@ -10,7 +10,7 @@
      * 是否支持HTML5上传的判断
      * @type {boolean}
      */
-    var supportHtml5Upload = false;w.File && w.File.prototype.slice && w.XMLHttpRequest;
+    var supportHtml5Upload = w.File && w.File.prototype.slice && w.XMLHttpRequest;
 
     var getRandomId = function() {
         return 'QU' + Math.round((Math.random() * 0x7fffffff) + 0x10000000).toString(16);
