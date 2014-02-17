@@ -15,7 +15,9 @@ class Uploader extends Storage
         'clearInterval' => 86400, //实际保存时间是这个的1.5倍 在这个区间内的临时文件都会被保存
         'path' => '', //存储路径 必须为绝对路径
         'blockSize' => 4194304,
-        'hash' => array(__CLASS__, 'hash')
+        'hash' => array(__CLASS__, 'hash'),
+        'flashBlockSize' => 262144,
+        'isFlash' => false //是否是Flash客户端
     );
 
     public function genToken()
@@ -55,9 +57,10 @@ class Uploader extends Storage
         $info      = $this->getTokenInfo($token);
         $size      = $this->size($token);
         $totalSize = $info['size'];
-
-        $start = $size > $totalSize ? $totalSize : $size;
-        $end   = $start + $this->blockSize > $totalSize ? $totalSize : $start + $this->blockSize;
+        
+        $start     = $size > $totalSize ? $totalSize : $size;
+        $blockSize = $this->isFlash ? $this->flashBlockSize : $this->blockSize;
+        $end       = $start + $blockSize > $totalSize ? $totalSize : $start + $blockSize;
         return  array($start, $end);
     }
 

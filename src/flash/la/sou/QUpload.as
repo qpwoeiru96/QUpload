@@ -213,8 +213,8 @@
             } catch (e)  {}
             
             this._urlLoader = new URLLoader();
-            
-            this._urlLoader.addEventListener(ProgressEvent.PROGRESS, this._progressHandler, false, 0, true); 
+            //不在需要绑定进度事件 反正又没用
+            //this._urlLoader.addEventListener(ProgressEvent.PROGRESS, this._progressHandler, false, 0, true); 
             this._urlLoader.addEventListener(Event.COMPLETE, this._chunkUploadCompelete, false, 0, true);
             this._urlLoader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
             this._urlLoader.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
@@ -278,6 +278,8 @@
                 start  = Number(range[0]);
                 end    = Number(range[1]);
                 token  = data.token;
+				
+				this._emitEvent('progress', [start, this._file.size]);
                 
                 if (1 === status || 0 === status) {
                     this._uploadChunk(token, start, end);
@@ -361,12 +363,16 @@
             variables.size             = this._file.size;
             variables.time             = this._file.time;
             variables.antiCache        = (new Date()).getTime();
+			variables.client           = 'flash';
             request.method             = URLRequestMethod.GET;
             request.data               = variables;
 
             loader.addEventListener(Event.COMPLETE, this._tokenCompleteHandler, false, 0, true);            
             loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
             loader.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
+			
+			//同时抛出一个进度条事件
+			this._emitEvent('progress', [0, this._file.size]);
             
             loader.load(request);
         }

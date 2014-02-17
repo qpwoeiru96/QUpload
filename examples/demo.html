@@ -53,7 +53,9 @@
                     <div id="abort" class="btn btn-warning">停止上传</div>
                     <div id="reset" class="btn btn-danger">重置</div>
                 </div>
-                
+                <div>
+                    <span id="a">0B</span>/<span id="b">0B</span>
+                </div>
                 <div style="margin: 10px;">
                     <div class="progress progress-striped active">
                         <div id="progress" class="bar" style="width: 0%;"></div>
@@ -64,6 +66,21 @@
     </div>    
 </body>
 <script type="text/javascript">
+
+
+    var printByte = function (byte) {
+        if(byte < 1024) {
+            return byte.toString() + 'B';
+        } else if(byte < 1048576) {
+            return (byte / 1024).toFixed(2).toString() + 'KB';
+        } else if(byte < 1073741824) {
+            return (byte / 1048576).toFixed(2).toString() + 'MB';
+        } else {
+            return (byte / 1073741824).toFixed(2).toString() + 'GB';
+        }
+    }
+
+
 $(function() {
     t = new QUpload({
         labelName : "Upload",
@@ -95,6 +112,10 @@ $(function() {
     });
 
     t.addEventListener('progress', function(a, b) {
+
+        
+        $('#a').text(printByte(a));
+        $('#b').text(printByte(b));
 
         var percent = (a / b * 100).toFixed(2) + '%';
 

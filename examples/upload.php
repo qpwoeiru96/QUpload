@@ -2,7 +2,6 @@
 set_time_limit(0);
 ignore_user_abort(true);
 
-
 require(__DIR__ . DIRECTORY_SEPARATOR . 'base.php');
 $token = isset($_GET['token']) ? $_GET['token'] : null;
 $start = isset($_GET['start']) ? (int)$_GET['start'] : null;
