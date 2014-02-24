@@ -4,15 +4,26 @@
     import flash.net.*;
     import flash.events.EventDispatcher;
     import flash.utils.ByteArray;
+
     import la.sou.QUpload;
     
+	/**
+	 * 文件加载类
+     */	 
     public class File extends EventDispatcher
     {
-        // 文件引用对象
+        /**
+         * 是否加载完成之后立即上传
+         * 
+         * @var Boolean
+         */
+        public var immediatelyUpload:Boolean = false;
+        
+        // 原始文件引用对象
         private var _fileReference:FileReference;
         
         // 文件是否在导入过程当中
-        private var fileOnLoading:Boolean = false;
+        private var _fileOnLoading:Boolean = false;
         
         // 文件是否已经加载完成
         private var _fileLoaded:Boolean = false;
@@ -25,6 +36,9 @@
         
         // 上次开始分割未知
         private var _lastSliceStart:Number = 0;
+		
+		// 是否已经退出
+		private var _canceled:Boolean = false;
         
         public function get selected():Boolean
         {
@@ -88,6 +102,8 @@
         
         /**
          * 构造函数
+         * 
+         * @return void
          */
         public function File():void
         {
@@ -97,10 +113,15 @@
         
         /**
          * 浏览文件
+         * 
+         * @return void
          */
         public function browse():void
         {
+			QUpload.info('file.browse', '文件浏览开始.');
             this._fileReference.browse();
+			
+			
         }
         
         /**
@@ -108,6 +129,7 @@
          * 
          * @param start 开始位置
          * @param end 结束位置
+         * @return ByteArray 二进制数组
          */
         public function slice(start:Number, end:Number):ByteArray
         {            
@@ -120,73 +142,130 @@
         
         /**
          * 开始加载文件
+         * 
+         * @return void
          */
         public function load():void
         {
             this._fileReference.load();
         }
         
+        /**
+         * 退出上传
+         * 
+         * @return void
+         */
         public function cancel():void
         {
-            this._fileReference.cancel();
+			this._canceled = true;
+            try {
+                this._fileReference.cancel();
+            } catch (e) { }
+
         }
         
         /**
          * 选择完成之后的操作
          * 
-         * @param event
+         * @param Event event
+         * @return void
          */
         private function _selectHandler(event:Event):void
-        {
-            this._isSelected = true;
+        {			
+            if (this._canceled) return ;
             
+            this._isSelected = true;
+            QUpload.info('file.select', this.name + ' 已经被选中.');
+            
+            //如果已经退出 那么不抛出事件            
             this.dispatchEvent(event);
         }
-        
 
-        
+        /**
+         * 加载完成之后的操作
+         * 
+         * @param Event event
+         * @return void
+         */
         private function _completeHandler(event:Event)
         {
-            this._loadedSize = this._fileReference.size;
-            this._fileLoaded = true;
+            if (this._canceled) return ;
+            QUpload.info('file.load', this.name + ' 已经加载完成.');
+            
+            this._loadedSize = this.size;
+            this._fileLoaded = true;            
             this.dispatchEvent(event);
-			QUpload.info('QUpload.File', 'load complete!');
         }
         
         /**
+         * 进度捕捉
          * 
+         * @param ProgressEvent event
+         * @return void
          */
-        private function _IOErrorHandler(event:IOErrorEvent):void
-        {
-            this.dispatchEvent(event);
-        }
-        
         private function _progressHandler(event:ProgressEvent):void
         {
+            if (this._canceled) return ;
+            
+            QUpload.info('file.progress', [QUpload.printByte(event.bytesLoaded), '/', QUpload.printByte(event.target.size)].join(' '));
+            
             this._loadedSize = event.bytesLoaded;
             this.dispatchEvent(event);
-            
-            //QUpload.info('File.loadProgress', [event.bytesLoaded / 1048576, 'MB'].join(''));
-            //QUpload.error('File.SecurityError', event.text);
-            //QUpload.error('File.IOError', event.text);
         }
         
+        /**
+         * 退出事件
+         * 
+         * @param Event event
+         * @return void
+         */
         private function _cancelHandler(event:Event):void
         {
             this.dispatchEvent(event);
         }
         
+        /**
+         * 安全错误捕捉
+         * 
+         * @param SecurityErrorEvent event
+         * @return void
+         */
         private function _securityErrorHandler(event:SecurityErrorEvent):void
         {
+            if (this._canceled) return ;
+            
             this.dispatchEvent(event);
         }
         
+        /**
+         * IO错误捕捉
+         * 
+         * @param IOErrorEvent event
+         * @return void
+         */
+        private function _IOErrorHandler(event:IOErrorEvent):void
+        {
+            if (this._canceled) return ;
+            
+            this.dispatchEvent(event);
+        }
+        
+        /**
+         * 绑定事件
+         * 
+         * @param IEventDispatcher dispatcher
+         * @return void
+         */
         private function _bindEvent(dispatcher:IEventDispatcher):void
         {
+			QUpload.info('file.bindEvent', '绑定事件开始.');
+			
+			//添加选择完成的事件
+            this._fileReference.addEventListener(Event.SELECT, this._selectHandler, false, 0, false);
+			
             //添加文件加载完成的事件
             dispatcher.addEventListener(Event.COMPLETE, this._completeHandler, false, 0, true);
-            //添加选择完成的事件
-            dispatcher.addEventListener(Event.SELECT, this._selectHandler, false, 0, true);
+            
             //添加取消事件监听
             dispatcher.addEventListener(Event.CANCEL, this._cancelHandler, false, 0, true);
             //添加IO错误的处理
@@ -195,6 +274,8 @@
             dispatcher.addEventListener(ProgressEvent.PROGRESS, this._progressHandler, false, 0, true);
             //添加安全错误的处理
             dispatcher.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
+			
+			QUpload.info('file.bindEvent', '绑定事件结束.');
         }        
 
     }

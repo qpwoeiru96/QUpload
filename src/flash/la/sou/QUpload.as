@@ -5,9 +5,13 @@
     import flash.display.DisplayObject;
     import flash.external.ExternalInterface;
     import flash.utils.ByteArray;
+    import flash.system.Security;
+
     import la.sou.File;
-    import flash.system.Security;    
     
+    /**
+     * 
+     */
     public class QUpload 
     {
         // 文件上传以及分割类
@@ -24,9 +28,6 @@
         
         // 文件是否是在上传中
         private var _onUploading:Boolean = false;
-		
-		// 文件是否是需要加载完成之后立即上传
-		private var _needUpload:Boolean = false;
         
         /**
          * 获取配置
@@ -49,8 +50,6 @@
             
             // 允许上传文件到任意域名
             Security.allowDomain("*");
-
-            this._file = this._getNewFile();
             
             //分析外部的环境配置
             this._parseConfig();            
@@ -69,23 +68,33 @@
          */
         public function upload():void
         {
-            // 如果文件正在上传中 或者加载中而且标志了加载后立即上传 那么无需处理
-            if (this._onUploading || (!this._file.loaded && this._needUpload)) {
-                return;
+            // 如果文件没有进行选择  
+            if (!this._file || !this._file.selected) {
+				this._throwError('', 301);
                 
-            // 如果文件没有进行选择            
-            } else if (!this._file.selected) {
-                this._throwError('', 301);
+              
+			// 如果文件正在上传中 或者加载中而且标志了加载后立即上传 那么无需处理
+            } else if (this._onUploading || (!this._file.loaded && this._file.immediatelyUpload)) {
+                //抛出信息
+                info('upload.info', '不需要进行任何操作。上传中:' 
+                     + this._onUploading 
+                     + ',加载完成:' 
+                     + this._file.loaded
+                     + ',需要立即上传:' + this._file.immediatelyUpload
+                );
+                
                 
             // 如果文件没有加载完成
             } else if (!this._file.loaded) {
                 
-				//设置标识位为true 代表加载完成之后立即上传
-				this._needUpload = true;
-				//同时抛出一个进度条事件
-				this._emitEvent('progress', [0, this._file.size]);
-                //var percent:Number = this._file.loadedSize / this._file.size * 100;
-                //this._throwError(percent.toFixed(2), 302);
+                //抛出信息
+                info('upload.info', '未加载完成需要加载完成立即上传');
+                
+                //设置标识位为true 代表加载完成之后立即上传
+                this._file.immediatelyUpload = true;
+
+                //同时抛出一个进度条事件
+                this._emitEvent('progress', [0, this._file.size]);
                 
             } else {
                 this._getToken();
@@ -97,12 +106,8 @@
          */
         public function reset():void
         {
-            try {
-                this._file.cancel();
-            } catch (e) { }
-
-            this._file = this._getNewFile();
-
+        	if(this._file) this._file.cancel();
+			this._file = null;
             this.abort();            
         }
         
@@ -114,7 +119,8 @@
             try {
                 this._urlLoader.close();
             } catch (e) { }
-            this._needUpload = false;
+
+            if(this._file) this._file.immediatelyUpload = false;
             this._onUploading = false;
         }
 
@@ -139,8 +145,8 @@
         /**
          * 弹出事件到外部空间
          * 
-         * @param eventName
-         * @param args
+         * @param String eventName
+         * @param Array args
          */
         private function _emitEvent(eventName:String, args:Array):void
         {
@@ -156,27 +162,30 @@
         /**
          * 绑定文件事件
          * 
-         * @param file
+         * @param File file
+         * @return void
          */
         private function _bindFileEvent(file:File):void
         {
             file.addEventListener(Event.COMPLETE, this._fileLoadComplete, false, 0, true);
             file.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
             file.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
-			
         }
-		
-		/**
+        
+        /**
          * 文件加载完成事件
          * 
-         * @param event
+         * @param Event event
+         * @return void
          */
-		private function _fileLoadComplete(event:Event):void
-		{
-			//判断标志位 再者判断是否是属于当前文件
-			if(this._needUpload && this._file === event.target)
-				this._getToken();
-		}
+        private function _fileLoadComplete(event:Event):void
+        {     
+            //判断标志位 再者判断是否是属于当前文件
+            if(this._file === event.target && this._file.immediatelyUpload) {
+                info('file load complete', '文件加载完成开始立即上传');
+                this._getToken();
+            }                
+        }
         
         /**
          * 文件选择完成之后的操作
@@ -185,24 +194,36 @@
         {
             var file = event.target,
                 ext:String = file.name.split('.').pop();
+				
+			trace(file);
             
+			//判断文件是否超过最大大小
             if (file.size > this.config.maxFileSize) {
                 this._emitEvent('error', [[printByte(this.config.maxFileSize), printByte(file.size)].join('|'), 102]);
                 this.reset();
+				
+			//判断文件是否符合类型
             } else if (this.config.allowedExt.indexOf(ext.toLowerCase()) === -1) {
                 this._emitEvent('error', [[this.config.allowedExt.join('/'), ext].join('|'), 101]);
                 this.reset();
+				
+			//正常的文件
             } else {
-				this._emitEvent('select', [{
-					name: file.name,
-					size: file.size,
-					time: file.time
-				}]);
+				
+
                 //重置上传环境 因为用户已经选择新的文件
-                this.reset();
+                this.reset();                
                 this._bindFileEvent(file);
                 this._file = file;
                 file.load();
+				
+				this._emitEvent('select', [{
+                    name: file.name,
+                    size: file.size,
+                    time: file.time
+                }]);
+				
+                
             }            
         }
         
@@ -228,8 +249,6 @@
             this.reset();
         }
         
-
-        
         private function _uploadChunk(token:String, start:Number, end:Number)
         {
             var bytes:ByteArray,
@@ -238,6 +257,8 @@
                 urlRequest:URLRequest,
                 urlLoader:URLLoader; 
             
+			this._onUploading = true;
+			
             bytes = this._file.slice(start, end);
             
             params = [
@@ -278,8 +299,8 @@
                 start  = Number(range[0]);
                 end    = Number(range[1]);
                 token  = data.token;
-				
-				this._emitEvent('progress', [start, this._file.size]);
+                
+                this._emitEvent('progress', [start, this._file.size]);
                 
                 if (1 === status || 0 === status) {
                     this._uploadChunk(token, start, end);
@@ -363,16 +384,17 @@
             variables.size             = this._file.size;
             variables.time             = this._file.time;
             variables.antiCache        = (new Date()).getTime();
-			variables.client           = 'flash';
+            variables.client           = 'flash';
             request.method             = URLRequestMethod.GET;
             request.data               = variables;
 
             loader.addEventListener(Event.COMPLETE, this._tokenCompleteHandler, false, 0, true);            
             loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, this._securityErrorHandler, false, 0, true);
             loader.addEventListener(IOErrorEvent.IO_ERROR, this._IOErrorHandler, false, 0, true);
-			
-			//同时抛出一个进度条事件
-			this._emitEvent('progress', [0, this._file.size]);
+            
+            //同时抛出一个进度条事件
+            this._emitEvent('progress', [0, this._file.size]);
+			this._onUploading = true;
             
             loader.load(request);
         }
@@ -391,15 +413,7 @@
          */
         private function _rootStageClickHandler(event:MouseEvent):void
         {
-            var file:File;
-            
-            if (this._file.selected) {
-                file = this._getNewFile();
-            } else {
-                file = this._file;
-            }
-            
-            file.browse();
+            this._getNewFile().browse();
         }
         
         /**
@@ -419,7 +433,7 @@
             this._config['allowedExt']   = fetchKey(paramObj, 'allowedExt').toLowerCase().split('|');
             this._config['debug']        = fetchKey(paramObj, 'debug');
             
-            //info('QUpload.Config.Detail', JSON.stringify(this._config));
+            info('QUpload.Config.Detail', JSON.stringify(this._config));
             
         }
         
@@ -429,16 +443,19 @@
             this._emitEvent('error', [event.toString(), 201]);
         }
         
+		/**
+		 * 作废
+		 */
         private function _progressHandler(event:ProgressEvent)
         {
             
-            QUpload.info('File.loadProgress', [(this._file.lastSliceStart + event.bytesLoaded) / 1048576, 'MB'].join(''));
-            this._emitEvent('progress', [this._file.lastSliceStart + event.bytesLoaded, this._file.size]);
+            //QUpload.info('file.upload.progress', [(this._file.lastSliceStart + event.bytesLoaded) / 1048576, 'MB'].join(''));
+            //this._emitEvent('progress', [this._file.lastSliceStart + event.bytesLoaded, this._file.size]);
         }
         
         private function _securityErrorHandler(event:SecurityErrorEvent)
         {
-            QUpload.error('File.SecurityError', event.toString());
+            QUpload.error('file.securityError', event.toString());
             this._emitEvent('error', [event.toString(), 201]);
         }
         
@@ -453,19 +470,25 @@
         {
             return typeof obj[key] !== "undefined" ? obj[key] : '';
         }
-		
-		public static function printByte(byte:Number):String
-		{
-			if(byte < 1024) {
-				return byte.toString() + 'B';
-			} else if(byte < 1048576) {
-				return (byte / 1024).toFixed(2).toString() + 'KB';
-			} else if(byte < 1073741824) {
-				return (byte / 1048576).toFixed(2).toString() + 'MB';
-			} else {
-				return (byte / 1073741824).toFixed(2).toString() + 'GB';
-			}
-		}
+        
+        /**
+         * 显示友好的文件大小格式
+         * 
+         * @param Number byte
+         * @return String
+         */
+        public static function printByte(byte:Number):String
+        {
+            if(byte < 1024) {
+                return byte.toString() + 'B';
+            } else if(byte < 1048576) {
+                return (byte / 1024).toFixed(2).toString() + 'KB';
+            } else if(byte < 1073741824) {
+                return (byte / 1048576).toFixed(2).toString() + 'MB';
+            } else {
+                return (byte / 1073741824).toFixed(2).toString() + 'GB';
+            }
+        }
         
         /**
          * 记录日志信息
@@ -482,10 +505,10 @@
             var date:Date = new Date();
             
             var str:String = [
-                'QUpload Flash ' + ['Info', 'Debug', 'Warning', 'Error'][level],
-                'Time: ' + date.toLocaleString(),
-                'Cateogry: ' + category,
-                'Message: ' + message
+                'QUpload Flash Client ' + ['Info', 'Debug', 'Warning', 'Error'][level],
+                'time: ' + date.toLocaleString(),
+                'cateogry: ' + category,
+                'message: ' + message
             ].join('\n');
             
             trace(str);
