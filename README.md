@@ -3,6 +3,8 @@
 
 QUpload是一个使用PHP + HTML5、Flash的断点续传解决方案。可以说他不仅仅是一个软件而是一套软件。
 
+欢迎提出宝贵意见，诚恳接受赐教，本人后端程序员代码写的没有前端好，见到 https://github.com/fex-team/webuploader 这个项目有感而发啊，人家太专业了。
+
 QUpload有什么特点？
 ===========
 
