@@ -295,20 +295,21 @@ Html5Uploader.prototype.constructor = Html5Uploader;
 
 
 function FlashUploader(options, id) {
+    
+    var getFlash = function() {
+        return document[id] || window[id] || document.getElementById(id);
+    }
 
-    this.upload = function() {
-        var flash = document.getElementById(id);
-        flash.upload();
+    this.upload = function() {        
+        getFlash().upload();
     }
 
     this.abort = function() {
-        var flash = document.getElementById(id);
-        flash.abort();
+        getFlash().abort();
     }
 
     this.reset = function() {
-        var flash = document.getElementById(id);
-        flash.reset();
+        getFlash().reset();
     }
 
 }

@@ -55,23 +55,12 @@ function QUpload(options) {
     /**
      * 移动小点的大小
      */
-    var size = 11, offset = 5;
+    var size = 3, offset = 1;
 
     if(supportHtml5Upload) {
         var inputId = 'QUpload_input_' + this.id;
         //如果是html5的话必须是那个file input上传啊
-        var $input = $('<form/>').attr('id', inputId).css({
-            height: size,
-            width: size,
-            display: 'block',
-            opacity: 0,
-            cursor: 'pointer',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            value: '',
-            overflow: 'hidden'
-        }).appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
+        var $input = $('<div/>').attr('id', inputId).hide().appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
 
         $input.find('input').on('change', function() {
             if(this.files.length > 0) {
@@ -105,12 +94,15 @@ function QUpload(options) {
             height: size,
             width: size,
             display: 'block',
-            opacity: 0,
+            opacity: 1,
+            background: '#000',
             cursor: 'pointer',
             position: 'absolute',
             top: 0,
             left: 0,
-            overflow: 'hidden'
+            overflow: 'hidden',
+            lineHeight: 0,
+            fontSize: 0
         }).appendTo(document.body);
 
         swfInject(this.options.swfPath, flashId, this.id, size, size, {
@@ -137,9 +129,17 @@ function QUpload(options) {
         var $move = supportHtml5Upload ? $input : $div,
             $elem = $(elem);
 
-        $elem.on('mousemove', function(event) {
-            $move.css({ top: event.pageY - offset, left: event.pageX - offset });
-        });
+        if(!supportHtml5Upload) {
+            $elem.on('mousemove', function(event) {
+                $move.css({ top: event.pageY - offset, left: event.pageX - offset });
+            });
+        } else {
+            $elem.on('click', function() {
+                $input.find('input').get(0).click();
+            });
+        }
+            
+            
     };
 
     /**
@@ -153,7 +153,7 @@ function QUpload(options) {
         } else {
             this.uploader.upload();
         }
-        
+    
     };
 
     /**
