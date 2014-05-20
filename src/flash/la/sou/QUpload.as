@@ -55,13 +55,19 @@
             this._parseConfig();            
           
             this._root.stage.addEventListener(MouseEvent.CLICK, this._rootStageClickHandler);
-            
-            //添加外部接口
-            ExternalInterface.addCallback('upload', this.upload);
+			
+			//添加外部接口
+			root.addEventListener(Event.ENTER_FRAME, registerExternalCallbacks);
+        }
+		
+		protected function registerExternalCallbacks(event:Event):void {
+
+			this._root.removeEventListener(Event.ENTER_FRAME, registerExternalCallbacks);
+     		ExternalInterface.addCallback('upload', this.upload);
             ExternalInterface.addCallback('getFileInfo', this.getFileInfo);
             ExternalInterface.addCallback('abort', this.abort);
             ExternalInterface.addCallback('reset', this.reset);
-        }
+		}
         
         /**
          * 开始上传文件

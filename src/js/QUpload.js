@@ -60,7 +60,7 @@ function QUpload(options) {
     if(supportHtml5Upload) {
         var inputId = 'QUpload_input_' + this.id;
         //如果是html5的话必须是那个file input上传啊
-        var $input = $('<div/>').attr('id', inputId).hide().appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
+        var $input = $('<form/>').attr('id', inputId).hide().appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
 
         $input.find('input').on('change', function() {
             if(this.files.length > 0) {
@@ -88,9 +88,8 @@ function QUpload(options) {
 
     } else {
 
-        var divId = 'QUpload_div_' + this.id,
-            flashId = 'QUpload_flash_' + this.id;
-        var $div = $('<div/>').html('<div id="' + flashId + '"></div>').attr('id', divId).css({
+        var flashId = 'QUpload_flash_' + this.id;
+        var $div = $('<div/>').attr('id', flashId).css({
             height: size,
             width: size,
             display: 'block',

@@ -43,7 +43,7 @@
         for(var i in flashVars) {
             flashVarsArr.push(escape(i) + '=' + escape(flashVars[i]));
         }
-
+        
         var template = 
             (isIE ? 
                 '<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" height="{$height}" width="{$width}" name="{$id}" id="{$id}">' :
@@ -55,7 +55,7 @@
             '<param name="Wmode" value="direct"/>' +
             '<param name="Loop" value="false"/>' +
             //'<param name="BgColor" value="$ffffff"/>' +
-            '<param name="AllowNetworking" value="all"/>' + 
+            '<param name="AllowNetworking" value="all"/>' +             
             '<param name="Src" value="{$swfPath}"/>' + 
             '</object>';
 
@@ -67,7 +67,7 @@
             'id': id
         });
     
-        $('#' + elemId).replaceWith(html);
+        $('#' + elemId).html(html);
 
     }
 var Language = (function() {
@@ -552,7 +552,7 @@ function QUpload(options) {
     if(supportHtml5Upload) {
         var inputId = 'QUpload_input_' + this.id;
         //如果是html5的话必须是那个file input上传啊
-        var $input = $('<div/>').attr('id', inputId).hide().appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
+        var $input = $('<form/>').attr('id', inputId).hide().appendTo(document.body).html('<input type="file" style="pointer: cursor;"/>');
 
         $input.find('input').on('change', function() {
             if(this.files.length > 0) {
@@ -580,9 +580,8 @@ function QUpload(options) {
 
     } else {
 
-        var divId = 'QUpload_div_' + this.id,
-            flashId = 'QUpload_flash_' + this.id;
-        var $div = $('<div/>').html('<div id="' + flashId + '"></div>').attr('id', divId).css({
+        var flashId = 'QUpload_flash_' + this.id;
+        var $div = $('<div/>').attr('id', flashId).css({
             height: size,
             width: size,
             display: 'block',

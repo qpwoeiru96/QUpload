@@ -43,7 +43,7 @@
         for(var i in flashVars) {
             flashVarsArr.push(escape(i) + '=' + escape(flashVars[i]));
         }
-
+        
         var template = 
             (isIE ? 
                 '<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" height="{$height}" width="{$width}" name="{$id}" id="{$id}">' :
@@ -55,7 +55,7 @@
             '<param name="Wmode" value="direct"/>' +
             '<param name="Loop" value="false"/>' +
             //'<param name="BgColor" value="$ffffff"/>' +
-            '<param name="AllowNetworking" value="all"/>' + 
+            '<param name="AllowNetworking" value="all"/>' +             
             '<param name="Src" value="{$swfPath}"/>' + 
             '</object>';
 
@@ -67,6 +67,6 @@
             'id': id
         });
     
-        $('#' + elemId).replaceWith(html);
+        $('#' + elemId).html(html);
 
     }
