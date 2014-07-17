@@ -3,19 +3,15 @@
 
 QUpload是一个使用PHP + HTML5、Flash的断点续传解决方案。可以说他不仅仅是一个软件而是一套软件。
 
-PS:基本上跟 百度FEX这个项目 https://github.com/fex-team/webuploader 异曲同工 不过人家侧重前端 我侧重工程 除了图片压缩 预览 以及分片上传没有之外 其他差不多 代码实现上 人家比较可扩展  我比较原始（注重 能用就行）当然也确实放在我们一个学习管理系统项目上 作为视频文件传输的控件 经过了用户的验证
-
 QUpload有什么特点？
 ===========
 
  1. 服务端纯php实现无需安装其他的扩展（PHP_VERSION >= 5.3.0）。
  2. 文件上传大小不受 upload_max_filesize 和 post_max_size 这两个配置的限制（因为使用了分块上传技术）。不过需要注意的是web容器比如IIS跟Nginx的最大支持请求主体的设置：确认 applicationhost.config 或 web.config 文件中的 configuration/system.webServer/security/requestFiltering/requestLimits@maxAllowedContentLength 设置。
  3. 兼容性好（支持IE6+ Chrome Firefox ...) 反正HTML5跟Flash至少有一项么。
- 4. 支持断点续传（妈妈再也不需要担心上传进度丢失啦）。
- 5. 自带过期内容清除机制（妈妈再也不需要担心碎片文件占用空间的问题）。
+ 4. 支持断点续传。
+ 5. 自带过期内容清除机制。
  6. 上传大文件服务端占用内存小。
- 7. 最大支持目前测试过的1G是没问题的（使用HTML5）,Flash勉强500MB吧，当然不支持断点续传的话 Flash也能支持1GB的水准。（PS:因为Flash目前暂不开放本地文件分割的API导致，所需文件需要导入到内存才能进行分割然后进行上传，所以1GB的文件需要1GB的内存，O! My God！原谅我把，实在是迫不得已。）
- 8. 半实时的进度显示。(因为as3中URLLoader的ProgressEvent无法支持上传进度的显示，所以Flash的上传都是每次分块完成之后才能显示的，表现为隔一段时间进度条涨一次。而HTML5则无此问题。)
 
    
 客户端如何使用?
